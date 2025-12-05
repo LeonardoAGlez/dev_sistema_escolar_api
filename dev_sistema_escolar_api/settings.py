@@ -1,5 +1,9 @@
 import os
 import dj_database_url
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -12,6 +16,12 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # Hosts permitidos
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
+# Agregar hosts desde variables de entorno
+if os.environ.get('ALLOWED_HOSTS'):
+    # Separar por comas y agregar cada host
+    env_hosts = [host.strip() for host in os.environ.get('ALLOWED_HOSTS').split(',')]
+    ALLOWED_HOSTS.extend(env_hosts)
 
 # Agregar el host de Render en producción
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
@@ -43,12 +53,17 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Configuración de CORS: define orígenes permitidos y quita CORS_ORIGIN_ALLOW_ALL
+# Configuración de CORS
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:4200',
 ]
 
-# Agregar el dominio de Vercel en producción (actualiza con tu dominio real)
+# Agregar orígenes desde variables de entorno
+if os.environ.get('CORS_ALLOWED_ORIGINS'):
+    env_origins = [origin.strip() for origin in os.environ.get('CORS_ALLOWED_ORIGINS').split(',')]
+    CORS_ALLOWED_ORIGINS.extend(env_origins)
+
+# Agregar el dominio de Vercel en producción
 VERCEL_FRONTEND_URL = os.environ.get('VERCEL_FRONTEND_URL')
 if VERCEL_FRONTEND_URL:
     CORS_ALLOWED_ORIGINS.append(VERCEL_FRONTEND_URL)
@@ -89,6 +104,7 @@ WSGI_APPLICATION = 'dev_sistema_escolar_api.wsgi.application'
 
 # Configuración de Base de Datos
 # Usa PostgreSQL en producción (Render) y MySQL en desarrollo
+# Configuración de Base de Datos
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
@@ -100,9 +116,23 @@ if DATABASE_URL:
             conn_health_checks=True,
         )
     }
+elif os.environ.get('DB_NAME'):
+    # PythonAnywhere u otra configuración MySQL con variables de entorno
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DB_NAME'),
+            'USER': os.environ.get('DB_USER'),
+            'PASSWORD': os.environ.get('DB_PASSWORD'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+            }
+        }
+    }
 else:
-    # Desarrollo: usar MySQL local
-    # Buscar primero my.cnf.local (con credenciales reales), si no existe usar my.cnf (plantilla)
+    # Desarrollo: usar MySQL local con archivo my.cnf
     local_cnf = os.path.join(BASE_DIR, "my.cnf.local")
     default_cnf = os.path.join(BASE_DIR, "my.cnf")
     mysql_config_file = local_cnf if os.path.exists(local_cnf) else default_cnf
@@ -116,7 +146,6 @@ else:
             }
         }
     }
-
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
